@@ -1,6 +1,12 @@
 # These imports are necessary to force module-scope register calls to happen.
-from . import quandl  # noqa
+#from . import quandl  # noqa
 from . import csvdir  # noqa
+from . import sharadar_sep  # noqa
+from . import sharadar_sfp  # noqa
+from . import sharadar_sefp  # noqa
+from . import hca_symbol  # noqa
+### ajjc from . import yahoo  # noqa
+# from . import hype_futures  # noqa #Slack(@Derek @hyperion)
 
 from .core import (
     UnknownBundle,
@@ -17,14 +23,14 @@ from .core import (
 
 
 __all__ = [
-    "UnknownBundle",
-    "bundles",
-    "clean",
-    "from_bundle_ingest_dirname",
-    "ingest",
-    "ingestions_for_bundle",
-    "load",
-    "register",
-    "to_bundle_ingest_dirname",
-    "unregister",
+    'UnknownBundle',
+    'bundles',
+    'clean',
+    'from_bundle_ingest_dirname',
+    'ingest',
+    'ingestions_for_bundle',
+    'load',
+    'register',
+    'to_bundle_ingest_dirname',
+    'unregister',
 ]

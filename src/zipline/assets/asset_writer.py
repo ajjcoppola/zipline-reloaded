@@ -140,7 +140,8 @@ _futures_defaults = {
 # Default values for the exchanges DataFrame
 _exchanges_defaults = {
     "canonical_name": lambda df, col: df.index,
-    "country_code": lambda df, col: "??",
+    "country_code": lambda df, col: "US",
+    # orig "country_code": lambda df, col: "??",
 }
 
 # Default values for the root_symbols DataFrame

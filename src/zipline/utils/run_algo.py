@@ -32,6 +32,9 @@ from zipline.finance.blotter import Blotter
 
 log = logbook.Logger(__name__)
 
+# HACK: ajjc 2022-08-09
+loaders={}
+
 
 class _RunAlgoError(click.ClickException, ValueError):
     """Signal an error that should have a different message if invoked from
@@ -170,17 +173,24 @@ def _run(
         future_minute_reader=bundle_data.equity_minute_bar_reader,
         future_daily_reader=bundle_data.equity_daily_bar_reader,
     )
-
+    custom_loader = loaders
     pipeline_loader = USEquityPricingLoader.without_fx(
         bundle_data.equity_daily_bar_reader,
         bundle_data.adjustment_reader,
     )
 
+    def my_dispatcher(column):
+        #reload(alphatools.research.loaders)
+        #Fundamentals.get_column(name)
+        return loaders[column]
+
     def choose_loader(column):
         if column in USEquityPricing.columns:
             return pipeline_loader
         try:
-            return custom_loader.get(column)
+            #return custom_loader.get(column)
+            return my_dispatcher(column)
+            #return custom_loader[column]
         except KeyError:
             raise ValueError("No PipelineLoader registered for column %s." % column)
 
@@ -319,6 +329,7 @@ def run_algorithm(
     environ=os.environ,
     custom_loader=None,
     blotter="default",
+    output=os.devnull,
 ):
     """
     Run a trading algorithm.
@@ -408,7 +419,7 @@ def run_algorithm(
         bundle_timestamp=bundle_timestamp,
         start=start,
         end=end,
-        output=os.devnull,
+        output=output, #os.devnull,
         trading_calendar=trading_calendar,
         print_algo=False,
         metrics_set=metrics_set,
