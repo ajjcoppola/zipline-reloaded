@@ -11,7 +11,8 @@ import numpy as np
 
 from numpy.testing import assert_almost_equal
 import pandas as pd
-from pandas.compat.chainmap import ChainMap
+from collections import ChainMap
+
 from pandas.testing import assert_frame_equal
 from toolz import merge
 
@@ -162,8 +163,8 @@ class RollingSumSum(CustomFactor):
 
 class WithConstantInputs(zf.WithAssetFinder):
     asset_ids = ASSET_FINDER_EQUITY_SIDS = 1, 2, 3, 4
-    START_DATE = pd.Timestamp("2014-01-01", tz="utc")
-    END_DATE = pd.Timestamp("2014-03-01", tz="utc")
+    START_DATE = pd.Timestamp("2014-01-01")
+    END_DATE = pd.Timestamp("2014-03-01")
     ASSET_FINDER_COUNTRY_CODE = "US"
 
     @classmethod
@@ -187,7 +188,6 @@ class WithConstantInputs(zf.WithAssetFinder):
             cls.START_DATE,
             cls.END_DATE,
             freq="D",
-            tz="UTC",
         )
         cls.loader = PrecomputedLoader(
             constants=cls.constants,
@@ -633,7 +633,7 @@ class ConstantInputTestCase(
             expected_values,
             index=dates,
             columns=assets,
-            dtype=np.float64,
+            # dtype=np.float64,
         )
 
         multiple_outputs = MultipleOutputs()
@@ -786,8 +786,8 @@ class FrameInputTestCase(
     zf.WithAssetFinder, zf.WithTradingCalendars, zf.ZiplineTestCase
 ):
     asset_ids = ASSET_FINDER_EQUITY_SIDS = range(HUGE_SID, HUGE_SID + 3)
-    start = START_DATE = pd.Timestamp("2015-01-01", tz="utc")
-    end = END_DATE = pd.Timestamp("2015-01-31", tz="utc")
+    start = START_DATE = pd.Timestamp("2015-01-01")
+    end = END_DATE = pd.Timestamp("2015-01-31")
     ASSET_FINDER_COUNTRY_CODE = "US"
 
     @classmethod
@@ -797,7 +797,6 @@ class FrameInputTestCase(
             cls.start,
             cls.end,
             freq=cls.trading_calendar.day,
-            tz="UTC",
         )
         cls.assets = cls.asset_finder.retrieve_all(cls.asset_ids)
         cls.domain = US_EQUITIES
@@ -896,9 +895,9 @@ class FrameInputTestCase(
 class SyntheticBcolzTestCase(
     zf.WithAdjustmentReader, zf.WithAssetFinder, zf.ZiplineTestCase
 ):
-    first_asset_start = pd.Timestamp("2015-04-01", tz="UTC")
-    START_DATE = pd.Timestamp("2015-01-01", tz="utc")
-    END_DATE = pd.Timestamp("2015-08-01", tz="utc")
+    first_asset_start = pd.Timestamp("2015-04-01")
+    START_DATE = pd.Timestamp("2015-01-01")
+    END_DATE = pd.Timestamp("2015-08-01")
 
     @classmethod
     def make_equity_info(cls):
@@ -961,11 +960,11 @@ class SyntheticBcolzTestCase(
         min_, max_ = index[[0, -1]]
         for asset in df.columns:
             if asset.start_date >= min_:
-                start = index.get_loc(asset.start_date, method="bfill")
+                start = index.get_indexer([asset.start_date], method="bfill")[0]
                 # +1 to overwrite start_date:
                 df.iloc[: start + 1, df.columns.get_loc(asset)] = np.nan
             if asset.end_date <= max_:
-                end = index.get_loc(asset.end_date)
+                end = index.get_indexer([asset.end_date])[0]
                 # +1 to *not* overwrite end_date:
                 df.iloc[end + 1 :, df.columns.get_loc(asset)] = np.nan
 
@@ -1059,9 +1058,9 @@ class SyntheticBcolzTestCase(
 class ParameterizedFactorTestCase(
     zf.WithAssetFinder, zf.WithTradingCalendars, zf.ZiplineTestCase
 ):
-    sids = ASSET_FINDER_EQUITY_SIDS = pd.Int64Index([1, 2, 3])
-    START_DATE = pd.Timestamp("2015-01-31", tz="UTC")
-    END_DATE = pd.Timestamp("2015-03-01", tz="UTC")
+    sids = ASSET_FINDER_EQUITY_SIDS = pd.Index([1, 2, 3], dtype="int64")
+    START_DATE = pd.Timestamp("2015-01-31")
+    END_DATE = pd.Timestamp("2015-03-01")
     ASSET_FINDER_COUNTRY_CODE = "??"
 
     @classmethod
@@ -1259,7 +1258,7 @@ class ParameterizedFactorTestCase(
         expected_1 = (self.raw_data[5:] ** 2) * 2
         assert_frame_equal(results["dv1"].unstack(), expected_1)
 
-        expected_5 = ((self.raw_data ** 2) * 2).rolling(5).mean()[5:]
+        expected_5 = ((self.raw_data**2) * 2).rolling(5).mean()[5:]
         assert_frame_equal(results["dv5"].unstack(), expected_5)
 
         # The following two use EquityPricing.open and .volume as inputs.
@@ -1480,9 +1479,8 @@ class PopulateInitialWorkspaceTestCase(
 
 
 class ChunkedPipelineTestCase(zf.WithSeededRandomPipelineEngine, zf.ZiplineTestCase):
-
-    PIPELINE_START_DATE = pd.Timestamp("2006-01-05", tz="UTC")
-    END_DATE = pd.Timestamp("2006-12-29", tz="UTC")
+    PIPELINE_START_DATE = pd.Timestamp("2006-01-05")
+    END_DATE = pd.Timestamp("2006-12-29")
     ASSET_FINDER_COUNTRY_CODE = "US"
 
     def test_run_chunked_pipeline(self):

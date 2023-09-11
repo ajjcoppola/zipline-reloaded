@@ -1,7 +1,7 @@
 """
 Tests for zipline.pipeline.loaders.frame.DataFrameLoader.
 """
-from mock import patch
+from unittest import mock
 import numpy as np
 import pandas as pd
 from numpy.testing import assert_array_equal
@@ -27,7 +27,7 @@ def frame_loader(request):
     request.cls.trading_day = get_calendar("NYSE").day
     request.cls.nsids = 5
     request.cls.ndates = 20
-    request.cls.sids = pd.Int64Index(range(request.cls.nsids))
+    request.cls.sids = pd.Index(range(request.cls.nsids), dtype="int64")
     request.cls.dates = pd.date_range(
         start="2014-01-02",
         freq=request.cls.trading_day,
@@ -227,7 +227,7 @@ class TestDataFrameLoader:
         assert formatted_adjustments == expected_formatted_adjustments
 
         mask = self.mask[dates_slice, sids_slice]
-        with patch("zipline.pipeline.loaders.frame.AdjustedArray") as m:
+        with mock.patch("zipline.pipeline.loaders.frame.AdjustedArray") as m:
             loader.load_adjusted_array(
                 US_EQUITIES,
                 columns=[USEquityPricing.close],

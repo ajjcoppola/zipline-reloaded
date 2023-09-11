@@ -14,9 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Cythonized ContinuousFutures object.
-"""
+"""Cythonized ContinuousFutures object."""
+
 cimport cython
 from cpython.number cimport PyNumber_Index
 from cpython.object cimport (
@@ -32,7 +31,7 @@ from cpython cimport bool
 from functools import partial
 
 from numpy import array, empty, iinfo
-from numpy cimport long_t, int64_t
+from numpy cimport int64_t, int64_t
 from pandas import Timestamp
 from zipline.utils.calendar_utils import get_calendar
 import warnings
@@ -76,8 +75,7 @@ ADJUSTMENT_STYLES = {'add', 'mul', None}
 
 
 cdef class ContinuousFuture:
-    """
-    Represents a specifier for a chain of future contracts, where the
+    """Represents a specifier for a chain of future contracts, where the
     coordinates for the chain are:
     root_symbol : str
         The root symbol of the contracts.
@@ -91,9 +89,9 @@ cdef class ContinuousFuture:
     Instances of this class are exposed to the algorithm.
     """
 
-    cdef readonly long_t sid
+    cdef readonly int64_t sid
     # Cached hash of self.sid
-    cdef long_t sid_hash
+    cdef int64_t sid_hash
 
     cdef readonly object root_symbol
     cdef readonly int offset
@@ -116,7 +114,7 @@ cdef class ContinuousFuture:
     })
 
     def __init__(self,
-                 long_t sid, # sid is required
+                 int64_t sid, # sid is required
                  object root_symbol,
                  int offset,
                  object roll_style,
@@ -153,11 +151,11 @@ cdef class ContinuousFuture:
         return self.sid_hash
 
     def __richcmp__(x, y, int op):
-        """
-        Cython rich comparison method.  This is used in place of various
+        """Cython rich comparison method.
+        This is used in place of various
         equality checkers in pure python.
         """
-        cdef long_t x_as_int, y_as_int
+        cdef int64_t x_as_int, y_as_int
 
         try:
             x_as_int = PyNumber_Index(x)
@@ -207,8 +205,7 @@ cdef class ContinuousFuture:
         return 'ContinuousFuture(%d, %s)' % (self.sid, params)
 
     cpdef __reduce__(self):
-        """
-        Function used by pickle to determine how to serialize/deserialize this
+        """Function used by pickle to determine how to serialize/deserialize this
         class.  Should return a tuple whose first element is self.__class__,
         and whose second element is a tuple of all the attributes that should
         be serialized/deserialized during pickling.
@@ -222,9 +219,7 @@ cdef class ContinuousFuture:
                                  self.exchange))
 
     cpdef to_dict(self):
-        """
-        Convert to a python dict.
-        """
+        """Convert to a python dict."""
         return {
             'sid': self.sid,
             'root_symbol': self.root_symbol,
@@ -237,14 +232,11 @@ cdef class ContinuousFuture:
 
     @classmethod
     def from_dict(cls, dict_):
-        """
-        Build an ContinuousFuture instance from a dict.
-        """
+        """Build an ContinuousFuture instance from a dict."""
         return cls(**dict_)
 
     def is_alive_for_session(self, session_label):
-        """
-        Returns whether the continuous future is alive at the given dt.
+        """Returns whether the continuous future is alive at the given dt.
 
         Parameters
         ----------
@@ -265,6 +257,7 @@ cdef class ContinuousFuture:
 
     def is_exchange_open(self, dt_minute):
         """
+        
         Parameters
         ----------
         dt_minute: pd.Timestamp (UTC, tz-aware)
@@ -279,7 +272,7 @@ cdef class ContinuousFuture:
         return calendar.is_open_on_minute(dt_minute)
 
 
-cdef class ContractNode(object):
+cdef class ContractNode:
 
     cdef readonly object contract
     cdef public object prev
@@ -307,9 +300,8 @@ cdef class ContractNode(object):
         return curr
 
 
-cdef class OrderedContracts(object):
-    """
-    A container for aligned values of a future contract chain, in sorted order
+cdef class OrderedContracts:
+    """A container for aligned values of a future contract chain, in sorted order
     of their occurrence.
     Used to get answers about contracts in relation to their auto close
     dates and start dates.
@@ -381,10 +373,8 @@ cdef class OrderedContracts(object):
             prev.next = curr
             prev = curr
 
-    cpdef long_t contract_before_auto_close(self, long_t dt_value):
-        """
-        Get the contract with next upcoming auto close date.
-        """
+    cpdef int64_t contract_before_auto_close(self, int64_t dt_value):
+        """Get the contract with next upcoming auto close date."""
         curr = self._head_contract
         while curr.next is not None:
             if curr.contract.auto_close_date.value > dt_value:
@@ -392,9 +382,8 @@ cdef class OrderedContracts(object):
             curr = curr.next
         return curr.contract.sid
 
-    cpdef contract_at_offset(self, long_t sid, Py_ssize_t offset, int64_t start_cap):
-        """
-        Get the sid which is the given sid plus the offset distance.
+    cpdef contract_at_offset(self, int64_t sid, Py_ssize_t offset, int64_t start_cap):
+        """Get the sid which is the given sid plus the offset distance.
         An offset of 0 should be reflexive.
         """
         cdef Py_ssize_t i
@@ -410,7 +399,7 @@ cdef class OrderedContracts(object):
         else:
             return None
 
-    cpdef long_t[:] active_chain(self, long_t starting_sid, long_t dt_value):
+    cpdef int64_t[:] active_chain(self, int64_t starting_sid, int64_t dt_value):
         curr = self.sid_to_contract[starting_sid]
         cdef list contracts = []
 
@@ -423,8 +412,8 @@ cdef class OrderedContracts(object):
 
     property start_date:
         def __get__(self):
-            return Timestamp(self._start_date, tz='UTC')
+            return Timestamp(self._start_date)
 
     property end_date:
         def __get__(self):
-            return Timestamp(self._end_date, tz='UTC')
+            return Timestamp(self._end_date)

@@ -7,7 +7,7 @@ def code(name):
     return countries_by_name[name].alpha2
 
 
-class CountryCode(object):
+class CountryCode:
     """A simple namespace of iso3166 alpha2 country codes."""
 
     ARGENTINA = code("ARGENTINA")
@@ -52,6 +52,6 @@ class CountryCode(object):
     SWITZERLAND = code("SWITZERLAND")
     TAIWAN = code("TAIWAN, PROVINCE OF CHINA")
     THAILAND = code("THAILAND")
-    TURKEY = code("TURKEY")
+    TURKEY = code("TÜRKIYE")
     UNITED_KINGDOM = code("UNITED KINGDOM OF GREAT BRITAIN AND NORTHERN IRELAND")
     UNITED_STATES = code("UNITED STATES OF AMERICA")

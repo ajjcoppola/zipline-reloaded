@@ -12,13 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from zipline.extensions import extensible
 from zipline.finance.cancel_policy import NeverCancel
 
 
 @extensible
-class Blotter(metaclass=ABCMeta):
+class Blotter(ABC):
     def __init__(self, cancel_policy=None):
         self.cancel_policy = cancel_policy if cancel_policy else NeverCancel()
         self.current_dt = None
@@ -51,13 +51,13 @@ class Blotter(metaclass=ABCMeta):
 
         Notes
         -----
-        amount > 0 :: Buy/Cover
-        amount < 0 :: Sell/Short
-        Market order:    order(asset, amount)
-        Limit order:     order(asset, amount, style=LimitOrder(limit_price))
-        Stop order:      order(asset, amount, style=StopOrder(stop_price))
-        StopLimit order: order(asset, amount, style=StopLimitOrder(limit_price,
-                               stop_price))
+        amount > 0 : Buy/Cover
+        amount < 0 : Sell/Short
+        Market order : order(asset, amount)
+        Limit order : order(asset, amount, style=LimitOrder(limit_price))
+        Stop order : order(asset, amount, style=StopOrder(stop_price))
+        StopLimit order : order(asset, amount,
+        style=StopLimitOrder(limit_price, stop_price))
         """
 
         raise NotImplementedError("order")
