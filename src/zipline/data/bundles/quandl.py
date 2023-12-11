@@ -6,7 +6,7 @@ import tarfile
 from zipfile import ZipFile
 
 from click import progressbar
-from logbook import Logger
+import logging
 import pandas as pd
 import requests
 from urllib.parse import urlencode
@@ -15,7 +15,7 @@ from zipline.utils.calendar_utils import register_calendar_alias
 from . import core as bundles
 import numpy as np
 
-log = Logger(__name__)
+log = logging.getLogger(__name__)
 
 ONE_MEGABYTE = 1024 * 1024
 QUANDL_DATA_URL = "https://www.quandl.com/api/v3/datatables/WIKI/PRICES.csv?"
@@ -105,8 +105,8 @@ def gen_asset_metadata(data, show_progress):
 
     data = data.groupby(by="symbol").agg({"date": [np.min, np.max]})
     data.reset_index(inplace=True)
-    data["start_date"] = data.date.amin
-    data["end_date"] = data.date.amax
+    data["start_date"] = data.date[np.min.__name__]
+    data["end_date"] = data.date[np.max.__name__]
     del data["date"]
     data.columns = data.columns.get_level_values(0)
 
@@ -308,7 +308,7 @@ def quantopian_quandl_bundle(
 
     with tarfile.open("r", fileobj=data) as tar:
         if show_progress:
-            log.info("Writing data to %s." % output_dir)
+            log.info("Writing data to %s.", output_dir)
         tar.extractall(output_dir)
 
 

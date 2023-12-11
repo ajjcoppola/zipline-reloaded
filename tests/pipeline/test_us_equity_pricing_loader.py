@@ -12,9 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-Tests for USEquityPricingLoader and related classes.
-"""
+
+"""Tests for USEquityPricingLoader and related classes."""
+
 from parameterized import parameterized
 import sys
 import numpy as np
@@ -58,11 +58,11 @@ import pytest
 # 15 16 17 18 19 20 21
 # 22 23 24 25 26 27 28
 # 29 30
-TEST_CALENDAR_START = pd.Timestamp("2015-06-01", tz="UTC")
-TEST_CALENDAR_STOP = pd.Timestamp("2015-06-30", tz="UTC")
+TEST_CALENDAR_START = pd.Timestamp("2015-06-01")
+TEST_CALENDAR_STOP = pd.Timestamp("2015-06-30")
 
-TEST_QUERY_START = pd.Timestamp("2015-06-10", tz="UTC")
-TEST_QUERY_STOP = pd.Timestamp("2015-06-19", tz="UTC")
+TEST_QUERY_START = pd.Timestamp("2015-06-10")
+TEST_QUERY_STOP = pd.Timestamp("2015-06-19")
 
 # One asset for each of the cases enumerated in load_raw_arrays_from_bcolz.
 EQUITY_INFO = pd.DataFrame(
@@ -84,7 +84,7 @@ EQUITY_INFO = pd.DataFrame(
     ],
     index=np.arange(1, 7),
     columns=["start_date", "end_date"],
-).astype(np.datetime64)
+).astype("datetime64[ns]")
 EQUITY_INFO["symbol"] = [chr(ord("A") + n) for n in range(len(EQUITY_INFO))]
 EQUITY_INFO["exchange"] = "TEST"
 
@@ -374,7 +374,7 @@ class USEquityPricingLoaderTestCase(WithAdjustmentReader, ZiplineTestCase):
 
         for table in tables:
             for eff_date_secs, ratio, sid in table.itertuples(index=False):
-                eff_date = pd.Timestamp(eff_date_secs, unit="s", tz="UTC")
+                eff_date = pd.Timestamp(eff_date_secs, unit="s")
 
                 # Ignore adjustments outside the query bounds.
                 if not (start_date <= eff_date <= end_date):
@@ -487,10 +487,8 @@ class USEquityPricingLoaderTestCase(WithAdjustmentReader, ZiplineTestCase):
 
             if convert_dts:
                 for colname in reader._datetime_int_cols[name]:
-                    expected_df[colname] = (
-                        expected_df[colname]
-                        .astype("datetime64[s]")
-                        .dt.tz_localize("UTC")
+                    expected_df[colname] = pd.to_datetime(
+                        expected_df[colname], unit="s"
                     )
 
             return expected_df
@@ -500,19 +498,8 @@ class USEquityPricingLoaderTestCase(WithAdjustmentReader, ZiplineTestCase):
 
             for colname in reader._datetime_int_cols[name]:
                 if not convert_dts:
-                    # todo: fix nanosecond hack
                     expected_df[colname] = (
-                        expected_df[colname]
-                        .astype("datetime64[s]")
-                        .view(int)
-                        .div(1000000000)
-                        .astype(int)
-                    )
-                else:
-                    expected_df[colname] = (
-                        expected_df[colname]
-                        .astype("datetime64[s]")
-                        .dt.tz_localize("UTC")
+                        expected_df[colname].astype("datetime64[s]").view(int)
                     )
 
             return expected_df
@@ -636,7 +623,7 @@ class USEquityPricingLoaderTestCase(WithAdjustmentReader, ZiplineTestCase):
             domain=US_EQUITIES,
             columns=columns,
             dates=query_days,
-            sids=pd.Int64Index(np.arange(1, 7)),
+            sids=pd.Index(np.arange(1, 7), dtype="int64"),
             mask=np.ones((len(query_days), 6), dtype=bool),
         )
         highs, volumes = map(getitem(results), columns)

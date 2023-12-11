@@ -55,38 +55,31 @@ implements the following algorithm for executing pipelines:
    into "narrow" format, with output labels dictated by the Pipeline's
    screen. This logic lives in SimplePipelineEngine._to_narrow.
 """
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from functools import partial
 
-from numpy import array, arange
-from pandas import DataFrame, MultiIndex
+import pandas as pd
+from numpy import arange, array
 from toolz import groupby
 
-from zipline.lib.adjusted_array import ensure_adjusted_array, ensure_ndarray
 from zipline.errors import NoFurtherDataError
+from zipline.lib.adjusted_array import ensure_adjusted_array, ensure_ndarray
+from zipline.utils.date_utils import compute_date_range_chunks
 from zipline.utils.input_validation import expect_types
-from zipline.utils.numpy_utils import (
-    as_column,
-    repeat_first_axis,
-    repeat_last_axis,
-)
-from zipline.utils.pandas_utils import explode
+from zipline.utils.numpy_utils import as_column, repeat_first_axis, repeat_last_axis
+from zipline.utils.pandas_utils import categorical_df_concat, explode
 from zipline.utils.string_formatting import bulleted_list
 
-from .domain import Domain, GENERIC
+from .domain import GENERIC, Domain
 from .graph import maybe_specialize
 from .hooks import DelegatingHooks
 from .term import AssetExists, InputDates, LoadableTerm
 
-from zipline.utils.date_utils import compute_date_range_chunks
-from zipline.utils.pandas_utils import categorical_df_concat
 
-
-class PipelineEngine(metaclass=ABCMeta):
+class PipelineEngine(ABC):
     @abstractmethod
     def run_pipeline(self, pipeline, start_date, end_date, hooks=None):
-        """
-        Compute values for ``pipeline`` from ``start_date`` to ``end_date``.
+        """Compute values for ``pipeline`` from ``start_date`` to ``end_date``.
 
         Parameters
         ----------
@@ -119,8 +112,7 @@ class PipelineEngine(metaclass=ABCMeta):
     def run_chunked_pipeline(
         self, pipeline, start_date, end_date, chunksize, hooks=None
     ):
-        """
-        Compute values for ``pipeline`` from ``start_date`` to ``end_date``, in
+        """Compute values for ``pipeline`` from ``start_date`` to ``end_date``, in
         date chunks of size ``chunksize``.
 
         Chunked execution reduces memory consumption, and may reduce
@@ -161,16 +153,13 @@ class PipelineEngine(metaclass=ABCMeta):
 
 
 class NoEngineRegistered(Exception):
-    """
-    Raised if a user tries to call pipeline_output in an algorithm that hasn't
+    """Raised if a user tries to call pipeline_output in an algorithm that hasn't
     set up a pipeline engine.
     """
 
 
 class ExplodingPipelineEngine(PipelineEngine):
-    """
-    A PipelineEngine that doesn't do anything.
-    """
+    """A PipelineEngine that doesn't do anything."""
 
     def run_pipeline(self, pipeline, start_date, end_date, hooks=None):
         raise NoEngineRegistered(
@@ -218,8 +207,7 @@ def default_populate_initial_workspace(
 
 
 class SimplePipelineEngine(PipelineEngine):
-    """
-    PipelineEngine class that computes each term independently.
+    """PipelineEngine class that computes each term independently.
 
     Parameters
     ----------
@@ -263,7 +251,6 @@ class SimplePipelineEngine(PipelineEngine):
         populate_initial_workspace=None,
         default_hooks=None,
     ):
-
         self._get_loader = get_loader
         self._finder = asset_finder
 
@@ -283,8 +270,7 @@ class SimplePipelineEngine(PipelineEngine):
     def run_chunked_pipeline(
         self, pipeline, start_date, end_date, chunksize, hooks=None
     ):
-        """
-        Compute values for ``pipeline`` from ``start_date`` to ``end_date``, in
+        """Compute values for ``pipeline`` from ``start_date`` to ``end_date``, in
         date chunks of size ``chunksize``.
 
         Chunked execution reduces memory consumption, and may reduce
@@ -323,7 +309,7 @@ class SimplePipelineEngine(PipelineEngine):
         """
         domain = self.resolve_domain(pipeline)
         ranges = compute_date_range_chunks(
-            domain.all_sessions(),
+            domain.sessions(),
             start_date,
             end_date,
             chunksize,
@@ -345,8 +331,7 @@ class SimplePipelineEngine(PipelineEngine):
         return categorical_df_concat(nonempty_chunks, inplace=True)
 
     def run_pipeline(self, pipeline, start_date, end_date, hooks=None):
-        """
-        Compute values for ``pipeline`` from ``start_date`` to ``end_date``.
+        """Compute values for ``pipeline`` from ``start_date`` to ``end_date``.
 
         Parameters
         ----------
@@ -389,7 +374,7 @@ class SimplePipelineEngine(PipelineEngine):
         if end_date < start_date:
             raise ValueError(
                 "start_date must be before or equal to end_date \n"
-                "start_date=%s, end_date=%s" % (start_date, end_date)
+                f"start_date={start_date}, end_date={end_date}"
             )
 
         domain = self.resolve_domain(pipeline)
@@ -424,7 +409,6 @@ class SimplePipelineEngine(PipelineEngine):
         execution_order = plan.execution_order(workspace, refcounts)
 
         with hooks.computing_chunk(execution_order, start_date, end_date):
-
             results = self.compute_chunk(
                 graph=plan,
                 dates=dates,
@@ -444,8 +428,7 @@ class SimplePipelineEngine(PipelineEngine):
         )
 
     def _compute_root_mask(self, domain, start_date, end_date, extra_rows):
-        """
-        Compute a lifetimes matrix from our AssetFinder, then drop columns that
+        """Compute a lifetimes matrix from our AssetFinder, then drop columns that
         didn't exist at all during the query dates.
 
         Parameters
@@ -470,18 +453,18 @@ class SimplePipelineEngine(PipelineEngine):
             that existed for at least one day between `start_date` and
             `end_date`.
         """
-        sessions = domain.all_sessions()
+        sessions = domain.sessions()
 
         if start_date not in sessions:
             raise ValueError(
-                "Pipeline start date ({}) is not a trading session for "
-                "domain {}.".format(start_date, domain)
+                f"Pipeline start date ({start_date}) is not a trading session for "
+                f"domain {domain}."
             )
 
         elif end_date not in sessions:
             raise ValueError(
-                "Pipeline end date {} is not a trading session for "
-                "domain {}.".format(end_date, domain)
+                f"Pipeline end date {end_date} is not a trading session for "
+                f"domain {domain}."
             )
 
         start_idx, end_idx = sessions.slice_locs(start_date, end_date)
@@ -582,8 +565,7 @@ class SimplePipelineEngine(PipelineEngine):
     def compute_chunk(
         self, graph, dates, sids, workspace, refcounts, execution_order, hooks
     ):
-        """
-        Compute the Pipeline terms in the graph for the requested start and end
+        """Compute the Pipeline terms in the graph for the requested start and end
         dates.
 
         This is where we do the actual work of running a pipeline.
@@ -765,24 +747,25 @@ class SimplePipelineEngine(PipelineEngine):
             # Slicing `dates` here to preserve pandas metadata.
             empty_dates = dates[:0]
             empty_assets = array([], dtype=object)
-            return DataFrame(
+            return pd.DataFrame(
                 data={name: array([], dtype=arr.dtype) for name, arr in data.items()},
-                index=MultiIndex.from_arrays([empty_dates, empty_assets]),
+                index=pd.MultiIndex.from_arrays([empty_dates, empty_assets]),
             )
-
+        # if "open_instance" in data.keys():
+        #     data["open_instance"].tofile("../../open_instance.dat")
         final_columns = {}
         for name in data:
             # Each term that computed an output has its postprocess method
             # called on the filtered result.
             #
-            # As of Mon May 2 15:38:47 2016, we only use this to convert
-            # LabelArrays into categoricals.
+            # Using this to convert np.records to tuples
             final_columns[name] = terms[name].postprocess(data[name][mask])
 
         resolved_assets = array(self._finder.retrieve_all(assets))
         index = _pipeline_output_index(dates, resolved_assets, mask)
-
-        return DataFrame(data=final_columns, index=index)
+        return pd.DataFrame(
+            data=final_columns, index=index, columns=final_columns.keys()
+        )
 
     def _validate_compute_chunk_params(self, graph, dates, sids, initial_workspace):
         """
@@ -914,7 +897,7 @@ def _pipeline_output_index(dates, assets, mask):
     """
     date_labels = repeat_last_axis(arange(len(dates)), len(assets))[mask]
     asset_labels = repeat_first_axis(arange(len(assets)), len(dates))[mask]
-    return MultiIndex(
+    return pd.MultiIndex(
         [dates, assets],
         [date_labels, asset_labels],
         # TODO: We should probably add names for these.
